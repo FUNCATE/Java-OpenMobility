@@ -73,7 +73,7 @@ public class GeoPackageService {
             throw new Exception("Invalid GeoPackage file.");
         }
 
-        List<SimpleFeature> features = gpkg.getFeatures("focosqueimadas");
+        List<SimpleFeature> features = gpkg.getFeatures(tableName);
 
         return features;
     }

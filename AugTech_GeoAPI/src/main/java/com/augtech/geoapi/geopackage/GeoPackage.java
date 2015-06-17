@@ -145,11 +145,9 @@ public class GeoPackage {
 	 * is a valid GeoPackage. If the supplied file does not exist, a new empty GeoPackage
 	 * is created with the supplied name.
 	 * 
-	 * @param fileName The name of the GeoPackage to create or connect to. The .gpkg extension is added 
 	 * if not supplied.
 	 * @param overwrite Overwrite the existing GeoPackage?
 	 * @throws Exception If an existing GeoPackage fails the validity check.
-	 * @see #isGPKGValid()
 	 */
 	public GeoPackage(ISQLDatabase sqlDB, boolean overwrite) {
 		
@@ -198,7 +196,15 @@ public class GeoPackage {
 		sqlTypeMap.put("geometry", JavaType.BYTE_ARR);
 		sqlTypeMap.put("blob", JavaType.BYTE_ARR);
 		sqlTypeMap.put("none", JavaType.BYTE_ARR);
-		
+		/* insert new types of the geometry columns */
+		sqlTypeMap.put("point", JavaType.BYTE_ARR);
+		sqlTypeMap.put("linestring", JavaType.BYTE_ARR);
+		sqlTypeMap.put("polygon", JavaType.BYTE_ARR);
+		sqlTypeMap.put("multipoint", JavaType.BYTE_ARR);
+		sqlTypeMap.put("multilinestring", JavaType.BYTE_ARR);
+		sqlTypeMap.put("multipolygon", JavaType.BYTE_ARR);
+		sqlTypeMap.put("geomcollection", JavaType.BYTE_ARR);
+
 		/* If the file alread exists, check it is a valid geopackage */
 		if (dbFile.exists()) {
 
@@ -825,7 +831,7 @@ public class GeoPackage {
 	}
 
 	/** Convenience method to check the passed bounding box (for a query) CRS matches
-	 * that on the {@link #lastFeatTable} and the bbox is within/ intersects with the 
+	 * that on the lastFeatTable and the bbox is within/ intersects with the
 	 * table boundingbox
 	 * 
 	 * @param checkTable The table to check the query box against
@@ -1534,7 +1540,7 @@ public class GeoPackage {
 	 * The constraint must be created before a record that uses it is inserted into gpkg_data_columns, therefore
 	 * constraint names specified on {@link AttributeType}'s via the user-data must be added through this 
 	 * method prior to passing the attribute definitions to 
-	 * {@link #createFeatureTable(String, String, List, List, BoundingBox, String, boolean)} 
+	 * createFeatureTable
 	 * with dataColumns set to True.<p>
 	 * 
 	 * Any existing constraint(s) in the GeoPackage with the same name are updated (delete-insert).<p>
@@ -1609,7 +1615,6 @@ public class GeoPackage {
 	}
 	/** Encode basic Java types to those permissible in a GeoPackage
 	 * 
-	 * @param object The object value to decode
 	 * @return A String usable for a table definition data type. Defaults to TEXT for
 	 * any unknown class or Object
 	 */

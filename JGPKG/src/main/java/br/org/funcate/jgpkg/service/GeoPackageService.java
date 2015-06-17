@@ -66,14 +66,29 @@ public class GeoPackageService {
     }
 
 
-    public static List<SimpleFeature> getGeometries(GeoPackage gpkg, String tableName) throws Exception
+    public static List<SimpleFeature> getGeometries(GeoPackage gpkg, String tableName, BoundingBox boundingBox) throws Exception
     {
-        if(!gpkg.isGPKGValid(true))
+        if(!gpkg.isGPKGValid(false))
         {
             throw new Exception("Invalid GeoPackage file.");
         }
+        List<SimpleFeature> features;
+        if(boundingBox==null || boundingBox.isEmpty())
+            features = gpkg.getFeatures(tableName);
+        else
+            features = gpkg.getFeatures(tableName, boundingBox);
 
-        List<SimpleFeature> features = gpkg.getFeatures("focosqueimadas");
+        return features;
+    }
+
+    public static List<SimpleFeature> getGeometries(GeoPackage gpkg, String tableName) throws Exception
+    {
+        if(!gpkg.isGPKGValid(false))
+        {
+            throw new Exception("Invalid GeoPackage file.");
+        }
+        List<SimpleFeature> features;
+        features = gpkg.getFeatures(tableName);
 
         return features;
     }

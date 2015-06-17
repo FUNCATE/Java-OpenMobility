@@ -194,6 +194,7 @@ public class GeoPackage {
 		sqlTypeMap.put("real", JavaType.DOUBLE);
 		sqlTypeMap.put("long", JavaType.DOUBLE);
 		sqlTypeMap.put("geometry", JavaType.BYTE_ARR);
+        sqlTypeMap.put("multipolygon", JavaType.BYTE_ARR);
 		sqlTypeMap.put("blob", JavaType.BYTE_ARR);
 		sqlTypeMap.put("none", JavaType.BYTE_ARR);
 		/* insert new types of the geometry columns */

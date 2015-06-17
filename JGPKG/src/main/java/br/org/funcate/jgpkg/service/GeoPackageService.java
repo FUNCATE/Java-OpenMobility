@@ -80,22 +80,10 @@ public class GeoPackageService {
 
         return features;
     }
-
-    public static List<SimpleFeature> getGeometries(GeoPackage gpkg, String tableName) throws Exception
-    {
-        if(!gpkg.isGPKGValid(false))
-        {
-            throw new Exception("Invalid GeoPackage file.");
-        }
-        List<SimpleFeature> features;
-        features = gpkg.getFeatures(tableName);
-
-        return features;
-    }
-
+    
     public static List<SimpleFeature> getTiles(GeoPackage gpkg, String tableName) throws Exception
     {
-        if(!gpkg.isGPKGValid(true))
+        if(!gpkg.isGPKGValid(false))
         {
             throw new Exception("Invalid GeoPackage file.");
         }
@@ -107,7 +95,7 @@ public class GeoPackageService {
 
     public static List<SimpleFeature> getTiles(GeoPackage gpkg, BoundingBox box, String tableName, int zoomLevel) throws Exception
     {
-        if(!gpkg.isGPKGValid(true))
+        if(!gpkg.isGPKGValid(false))
         {
             throw new Exception("Invalid GeoPackage file.");
         }
@@ -119,7 +107,7 @@ public class GeoPackageService {
 
     public static byte[] getTile(GeoPackage gpkg, String tableName, int col, int row, int zoomLevel) throws Exception
     {
-        if(!gpkg.isGPKGValid(true))
+        if(!gpkg.isGPKGValid(false))
         {
             throw new Exception("Invalid GeoPackage file.");
         }
@@ -130,9 +118,9 @@ public class GeoPackageService {
     }
 
     public static Map<String, Integer> getTilesBounds(GeoPackage gpkg, String tableName, String tableType, Integer zoomLevel) throws Exception {
-        if (!gpkg.isGPKGValid(true)) {
+/*        if (!gpkg.isGPKGValid(true)) {
             throw new Exception("Invalid GeoPackage file.");
-        }
+        }*/
 
         ICursor icursor = gpkg.getUserTable(tableName, tableType).query(gpkg, new String[]{"max(tile_row), min(tile_row), max(tile_column), min(tile_column)"}, "zoom_level="+zoomLevel.intValue());
 

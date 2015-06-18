@@ -80,7 +80,7 @@ public class GeoPackageService {
 
         return features;
     }
-    
+
     public static List<SimpleFeature> getTiles(GeoPackage gpkg, String tableName) throws Exception
     {
         if(!gpkg.isGPKGValid(false))

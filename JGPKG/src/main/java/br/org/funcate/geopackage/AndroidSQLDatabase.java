@@ -16,6 +16,7 @@
 package br.org.funcate.geopackage;
 
 import java.io.File;
+import java.util.Date;
 import java.util.List;
 import java.util.Map;
 
@@ -94,8 +95,8 @@ public class AndroidSQLDatabase extends SQLiteOpenHelper implements ISQLDatabase
 		getDatabase(true);
 		
     	int ret = 0;
-		ContentValues cv = new ContentValues();
-		for (Map.Entry<String, Object> v : values.entrySet()) cv.put(v.getKey(), v.getValue().toString() );
+		ContentValues cv = getContentValues(values);
+
     	if (strWhere !=null) { 
     		ret = sqlDB.update(table, cv, strWhere, null);
     	}
@@ -138,7 +139,7 @@ public class AndroidSQLDatabase extends SQLiteOpenHelper implements ISQLDatabase
 			} else if (o instanceof Double) {
 				cv.put(v.getKey(), (Double)o );	
 			} else if (o instanceof byte[]) {
-				cv.put(v.getKey(), (byte[])o );	
+				cv.put(v.getKey(), (byte[])o );
 			} else if (o instanceof Byte) {
 				cv.put(v.getKey(), (Byte)o );	
 			} else if (o instanceof Float) {
@@ -147,6 +148,8 @@ public class AndroidSQLDatabase extends SQLiteOpenHelper implements ISQLDatabase
 				cv.put(v.getKey(), (Long)o );	
 			} else if (o instanceof Short) {
 				cv.put(v.getKey(), (Short)o );	
+			} else if (o instanceof Date) {
+				cv.put(v.getKey(), ((Date)o).getTime() );
 			} else {
 				cv.put(v.getKey(), String.valueOf(o) );
 			}

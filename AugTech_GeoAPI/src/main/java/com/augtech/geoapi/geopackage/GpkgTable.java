@@ -15,13 +15,18 @@
  */
 package com.augtech.geoapi.geopackage;
 
+import android.text.format.DateFormat;
+
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Calendar;
 import java.util.Collection;
 import java.util.Date;
+import java.util.GregorianCalendar;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.TimeZone;
 
 import org.opengis.geometry.BoundingBox;
 
@@ -138,7 +143,7 @@ public abstract class GpkgTable {
 		
 		sb.append(");");
 		
-		geoPackage.getDatabase().execSQL( sb.toString() );
+		geoPackage.getDatabase().execSQL(sb.toString());
 		
 		return true;
 	}
@@ -190,7 +195,7 @@ public abstract class GpkgTable {
 		if (hasContentInfo==false) {
 			
 			GpkgRecords contents = geoPackage.getSystemTable(GpkgContents.TABLE_NAME)
-												.query(geoPackage, "table_name='"+tableName+"'");
+												.query(geoPackage, "table_name='" + tableName + "'");
 			if (contents==null || contents.size()==0) 
 				throw new Exception("Table "+tableName+" not defined in "+GpkgContents.TABLE_NAME);
 			
@@ -320,7 +325,7 @@ public abstract class GpkgTable {
 	 * @return The row ID of the newly inserted row
 	 */
 	public long insert(GeoPackage geoPackage, Map<String, Object> values) {
-		return geoPackage.getDatabase().doInsert("["+tableName+"]", values);
+		return geoPackage.getDatabase().doInsert("[" + tableName + "]", values);
 	}
 
 	/** Issue a raw query on this table for a {@linkplain ICursor}
@@ -333,7 +338,7 @@ public abstract class GpkgTable {
 	 */
 	public ICursor query(GeoPackage geoPackage, String[] columns, String strWhere) {
 		
-		return geoPackage.getDatabase().doQuery("["+tableName+"]", columns, strWhere);
+		return geoPackage.getDatabase().doQuery("[" + tableName + "]", columns, strWhere);
 		
 	}
 	/** Get a list of GpkgRecords from this table matching the where clause. It
@@ -424,6 +429,18 @@ public abstract class GpkgTable {
 				case FLOAT:
 					thisRec.add( cur.getFloat(idx) );
 					break;
+				case DATE:
+					String str_date = cur.getString(idx);
+					Date date;
+					try {
+						Long l = new Long(str_date);
+						date = new Date();
+						date.setTime(l);
+					}catch (Exception e){
+						date = new Date();
+					}
+					thisRec.add( date );
+					break;
 				case DOUBLE:
 					thisRec.add( cur.getDouble(idx) );
 					break;
@@ -443,7 +460,7 @@ public abstract class GpkgTable {
 			} // Next column
 			
 			thisRec.trimToSize();
-			records.add( thisRec );
+			records.add(thisRec);
 		}
 		
 		cur.close();

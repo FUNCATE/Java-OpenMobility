@@ -25,9 +25,13 @@ import java.io.IOException;
 import java.io.RandomAccessFile;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Date;
 import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -40,6 +44,8 @@ import org.opengis.feature.type.Name;
 import org.opengis.geometry.BoundingBox;
 import org.opengis.referencing.crs.CoordinateReferenceSystem;
 
+import com.augtech.geoapi.R;
+import com.augtech.geoapi.context.Utils;
 import com.augtech.geoapi.feature.SimpleFeatureImpl;
 import com.augtech.geoapi.geometry.BoundingBoxImpl;
 import com.augtech.geoapi.geopackage.geometry.GeometryDecoder;
@@ -84,6 +90,7 @@ public class GeoPackage {
 		FLOAT,
 		DOUBLE,
 		BYTE_ARR,
+		DATE,
 		UNKNOWN
 	}
 	/** A map of possible SQL Field types to {@link JavaType} enum values.
@@ -185,8 +192,8 @@ public class GeoPackage {
 		sqlTypeMap.put("integer", JavaType.INTEGER);
 		sqlTypeMap.put("tinyint", JavaType.INTEGER);
 		sqlTypeMap.put("text", JavaType.STRING);
-		sqlTypeMap.put("date", JavaType.STRING);
-		sqlTypeMap.put("datetime", JavaType.STRING);
+		sqlTypeMap.put("date", JavaType.DATE);
+		sqlTypeMap.put("datetime", JavaType.DATE);
 		sqlTypeMap.put("string", JavaType.STRING);
 		sqlTypeMap.put("boolean", JavaType.BOOLEAN);
 		sqlTypeMap.put("float", JavaType.FLOAT);
@@ -287,7 +294,7 @@ public class GeoPackage {
 	private boolean setGpkgAppPragma() {
 		
 		if (!sqlDB.isOpen()) sqlDB.getDatabase(true);
-		sqlDB.doRawQuery("pragma application_id="+GPKG_APPLICATION_ID);
+		sqlDB.doRawQuery("pragma application_id=" + GPKG_APPLICATION_ID);
 		
 		return isGpkgAppPragmaSet();
 	}
@@ -369,7 +376,7 @@ public class GeoPackage {
 		} else {
 			integrity = true;
 		}
-		
+
 		c = sqlDB.doRawQuery("PRAGMA foreign_key_check");
 		foreignKey = c.moveToFirst();
 		c.close();
@@ -389,6 +396,12 @@ public class GeoPackage {
 		}
 		return (isGPKG || MODE_STRICT==false) && integrity && !foreignKey && tabsExist;
 		
+	}
+
+	private void setForeignKeysPragma(boolean state) {
+		sqlDB.getDatabase(false);
+		ICursor c = sqlDB.doRawQuery("PRAGMA foreign_keys = "+(state?"ON":"OFF"));
+		c.close();
 	}
 	/** Get the database associated with this GeoPackage
 	 * 
@@ -561,7 +574,7 @@ public class GeoPackage {
 	 * the table being queried.
 	 */
 	public List<SimpleFeature> getFeatures(final String tableName, final BoundingBox bbox) throws Exception {
-		return getFeatures(tableName, bbox, true, true, new StandardGeometryDecoder() );
+		return getFeatures(tableName, bbox, true, true, new StandardGeometryDecoder());
 	}
 	/** Get all the features from the supplied table name.<p>
 	 * This method is not recommended if you don't know how many features are in a table, 
@@ -575,7 +588,7 @@ public class GeoPackage {
 	 */
 	public List<SimpleFeature> getFeatures(final String tableName) throws Exception {
 		FeaturesTable featTable = (FeaturesTable)getUserTable( tableName, GpkgTable.TABLE_TYPE_FEATURES );
-		return getFeatures("SELECT * FROM ["+tableName+"]", featTable, new StandardGeometryDecoder() );
+		return getFeatures("SELECT * FROM [" + tableName + "]", featTable, new StandardGeometryDecoder());
 	}
 	/** Get a list of {@link SimpleFeature} from the GeoPackage by specifying a where clause
 	 * (for example {@code featureId='pipe.1234'} or {@code id=1234} )
@@ -767,6 +780,8 @@ public class GeoPackage {
 		GpkgRecords featRecords = null;
 		String sql = ""; 
 		String fieldName = null;
+		// control to add new feature to list allFeats
+		boolean isValidFeature;
 		
 		// While we have less records than total for table..
 		while (recCount < totalRecs) {
@@ -779,6 +794,8 @@ public class GeoPackage {
 
 			// Now go through each record building the feature with it's attribute values
 			for (int rIdx=0; rIdx < featRecords.size(); rIdx++) {
+
+				isValidFeature=true;
 
 				// Create new list so previous values are not overridden 
 				attrValues = new ArrayList<Object>();
@@ -795,25 +812,36 @@ public class GeoPackage {
 				for (int typeIdx=0; typeIdx < attrTypes.size(); typeIdx++) {
 					
 					fieldName = attrTypes.get( typeIdx ).getName().getLocalPart();
-					value = featRecords.get(rIdx).get( featRecords.getFieldIdx(fieldName) );
+					value = featRecords.get(rIdx).get(featRecords.getFieldIdx(fieldName));
 					
 					if (fieldName.equals(geomInfo.getColumnName())) {
-						
-						// If geometry column, decode to actual Geometry
-						value = geomDecoder.setGeometryData( (byte[])value ).getGeometry();
+
+						try {
+							// If geometry column, decode to actual Geometry
+							value = geomDecoder.setGeometryData((byte[]) value).getGeometry();
+						}catch (Exception e){
+							log.log(Level.INFO,
+									String.format("Warning: Ignored a corrupted feature (%s %s).",
+											recCount,featTable.getTableName())
+							);
+							isValidFeature=false;
+							break;
+						}
 						
 					}
 					
 					attrValues.add(value);
 					
 				}
-				attrValues.trimToSize();
+				if(isValidFeature) {
+					attrValues.trimToSize();
 
-				// Create the feature and add to list of all features
-				allFeats.add( new SimpleFeatureImpl(fid, attrValues, featureType ) );
-
+					// Create the feature and add to list of all features
+					allFeats.add(new SimpleFeatureImpl(fid, attrValues, featureType));
+				}
 				// Store the last key we saw for the next page query
 				lastPK = featRecords.getFieldInt(rIdx, pk );
+
 				recCount++;
 			}
 		}
@@ -823,8 +851,8 @@ public class GeoPackage {
 		
 		log.log(Level.INFO,
 				String.format("%s %s feature(s) built in %s seconds",
-						recCount,featTable.getTableName(),(System.currentTimeMillis()-startTime)/1000)
-						);
+				recCount,featTable.getTableName(),(System.currentTimeMillis()-startTime)/1000)
+		);
 		
 		return allFeats;
 		
@@ -1058,9 +1086,9 @@ public class GeoPackage {
 	 */
 	public byte[] getTile(final String tableName, int x_col, int y_row, int zoom) throws Exception {
 		
-		GpkgRecords recs = new TilesTable(this, tableName).query(this, 
+		GpkgRecords recs = new TilesTable(this, tableName).query(this,
 				String.format("zoom_level=%s AND tile_column=%s AND tile_row=%s", zoom, x_col, y_row)
-				);
+		);
 		
 		return recs.getFieldBlob(0, "tile_data");
 	}
@@ -1257,6 +1285,163 @@ public class GeoPackage {
 		
 		return recID;
 	}
+
+	/** Update a single {@link SimpleFeature} into the GeoPackage.
+	 * The table name to update into is taken from the local part of
+	 * the {@link FeatureType#getName()}.
+	 *
+	 * @param feature The SimpleFeature to update.
+	 * @return The state of the update operation, true in success or false otherwise
+	 * @throws Exception
+	 */
+	public boolean updateFeature(SimpleFeature feature) throws Exception {
+		SimpleFeatureType type = feature.getType();
+
+		FeaturesTable featTable = (FeaturesTable)getUserTable(
+				type.getName().getLocalPart(), GpkgTable.TABLE_TYPE_FEATURES );
+
+		// Get and check dimensional output
+		int mOpt = featTable.getGeometryInfo().getMOption();
+		int zOpt = featTable.getGeometryInfo().getZOption();
+		int dimension = 2;
+		if (	mOpt==Z_M_VALUES_MANDATORY || zOpt==Z_M_VALUES_MANDATORY
+				|| mOpt==Z_M_VALUES_OPTIONAL || zOpt==Z_M_VALUES_OPTIONAL) {
+			dimension = 3;
+		}
+		if (mOpt==Z_M_VALUES_MANDATORY && zOpt==Z_M_VALUES_MANDATORY)
+			throw new IllegalArgumentException("4 dimensional output is not supported");
+
+		Map<String, Object> values = buildInsertValues(feature, featTable.getFields(), dimension);
+		String featureID = feature.getID().replaceAll(feature.getFeatureType().getTypeName(),"");
+		String where = featTable.getPrimaryKey(this) + "=" + featureID;
+
+		int affectedRows = featTable.update(this, values, where);
+
+		if (affectedRows>0) {
+			updateLastChange(featTable.getTableName(), featTable.getTableType());
+			return true;
+		}
+
+		return false;
+	}
+
+	/** Delete a single {@link SimpleFeature} of the GeoPackage.
+	 * The table name to delete is taken from the local part of
+	 * the {@link FeatureType#getName()}.
+	 *
+	 * @param tableName The name of the feature table onto a feature to be removed.
+	 * @param featureID The SimpleFeature identify to be removed.
+	 * @return The state of the delete operation, true in success or false otherwise
+	 * @throws Exception
+	 */
+	public boolean deleteFeature(String tableName, long featureID) throws Exception {
+
+		setForeignKeysPragma(true);
+
+		FeaturesTable featTable = (FeaturesTable)getUserTable(tableName, GpkgTable.TABLE_TYPE_FEATURES );
+		String where = featTable.getPrimaryKey(this) + "=" + featureID;
+
+		int affectedRows = featTable.delete(this, where);
+
+		if (affectedRows>0) {
+			updateLastChange(featTable.getTableName(), featTable.getTableType());
+			return true;
+		}
+
+		return false;
+	}
+
+	/**
+	 * To Insert the media files on media table into a GeoPackage. Media table is not default on Geopackage.
+	 * @param mediaTable, the name of the media table
+	 * @param featureID, The identity of the Feature to associate media and Feature.
+	 * @param medias, the media's bytes into an Array of medias
+	 * @return, a long with number of the affected rows
+	 * @throws Exception
+	 */
+	public long insertMedias (String mediaTable, long featureID, ArrayList<Object> medias) throws Exception {
+		Collection<GpkgField> tabFields = getFieldsForMediaTable();
+
+		List<Map<String,Object>> allValues=buildInsertValues(medias, tabFields, featureID);
+
+		return this.getDatabase().doInsert(mediaTable, allValues);
+	}
+
+	/**
+	 * Method for get Fields of the Media Table
+	 * @return
+	 */
+	private Collection<GpkgField> getFieldsForMediaTable() {
+
+		GpkgField PK_UID = new GpkgField("PK_UID", "integer");
+		PK_UID.primaryKey = true;
+		GpkgField feature_id = new GpkgField("feature_id", "integer");
+		GpkgField picture = new GpkgField("picture", "blob");
+		GpkgField picture_mime_type = new GpkgField("picture_mime_type", "text");
+
+		Collection<GpkgField> tabFields = new HashSet<GpkgField>(4);
+		tabFields.add(PK_UID);
+		tabFields.add(feature_id);
+		tabFields.add(picture);
+		tabFields.add(picture_mime_type);
+
+		return tabFields;
+	}
+
+	/**
+	 *
+	 * @param mediaTable
+	 * @param databaseMedias, ids of the kept medias
+	 * @param featureID, id of the associated feature.
+	 * @return int, the number of the affected rows
+	 * @throws Exception
+	 */
+	public int removeMedias (String mediaTable, ArrayList<String> databaseMedias, long featureID) throws Exception {
+
+		Collection<GpkgField> tabFields = getFieldsForMediaTable();
+		String removeWhere = buildWhereClauseMediaIds(databaseMedias, tabFields, featureID);
+		return this.getDatabase().doDelete(mediaTable, removeWhere);
+	}
+
+	/**
+	 * Get list of the medias and your respective binary data.
+	 * @param mediaTable, the name of the media table
+	 * @param featureID, id of the associated feature.
+	 * @return
+	 * @throws Exception
+	 */
+	public Map<String,Object> getMedias (String mediaTable, long featureID) throws Exception {
+
+		Collection<GpkgField> tabFields = getFieldsForMediaTable();
+		String where = buildWhereClauseFeatureId(tabFields, featureID);
+
+		Iterator<GpkgField> itField = tabFields.iterator();
+		String fieldNameBLOB="";
+		String primaryKey="";
+		while (itField.hasNext()) {
+			GpkgField field = itField.next();
+			if(field.getFieldType().toLowerCase().equals("blob")) {
+				fieldNameBLOB = field.getFieldName();
+			}else if(field.isPrimaryKey()) {
+				primaryKey = field.getFieldName();
+			}
+		}
+
+		ICursor c = this.getDatabase().doQuery(mediaTable, new String[]{primaryKey,fieldNameBLOB}, where);
+		Map<String,Object> media = new HashMap<String, Object>();
+
+		if(c.moveToFirst()) {
+			do {
+				int index = c.getColumnIndex(primaryKey);
+				String key = String.valueOf(c.getInt(index));
+				index = c.getColumnIndex(fieldNameBLOB);
+				media.put(key, c.getBlob(index));
+			} while (c.moveToNext());
+		}
+		c.close();
+		return media;
+	}
+
 	/** Create a Map of field name to field value for inserting into a table.
 	 * 
 	 * @param feature The {@link SimpleFeature}
@@ -1291,7 +1476,7 @@ public class GeoPackage {
 				/* If the field is not available on the type, set to null to ensure
 				 * the value list matches the table definition */
 				if (idx==-1 || idx > type.getAttributeCount()) {
-					value = null; 
+					value = null;
 				} else {
 					value = feature.getAttribute(idx);
 				}
@@ -1309,7 +1494,7 @@ public class GeoPackage {
 					hasGeom = true;
 					values.put(field.getFieldName(), encodeGeometry( (Geometry)value, geomDimension ) );
 				} else {
-					values.put(field.getFieldName(), value);
+					if(value!=null)	values.put(field.getFieldName(), value);
 				}
 			} else {
 				if (MODE_STRICT) {
@@ -1326,6 +1511,118 @@ public class GeoPackage {
 		
 		return values;
 	}
+
+	/**
+	 * Create a Map of field name to field value for inserting into a table.
+	 *
+	 * @param medias, the list of the medias in binary format.
+	 * @param tabFields The GeoPackage table fields to use for building the map.
+	 * @param featureID, the identified of the associated feature
+	 * @return A List Map
+	 * @throws IOException
+	 */
+	private List<Map<String, Object>> buildInsertValues(ArrayList<Object> medias, Collection<GpkgField> tabFields, long featureID) throws IOException {
+
+		// Construct values
+		int len = medias.size();
+		List<Map<String, Object>> listValues = new ArrayList<Map<String, Object>>(len);
+		Map<String, Object> values = null;
+		Object value = null;
+		Iterator<Object> itMedia = medias.iterator();
+
+		while (itMedia.hasNext()){
+			values = new HashMap<String, Object>();
+			// For each field defined in the table...
+			for (GpkgField f : tabFields) {
+
+				if (f.isPrimaryKey()) continue; // We can't insert or update the PK! shall be autoincrement
+
+				// if integer is feature_id column
+				if (f.getFieldType().toLowerCase().equals("integer")) {
+					value = featureID;
+				}else if (f.getFieldType().toLowerCase().equals("blob")) {
+					value = itMedia.next();
+				}else if (f.getFieldType().toLowerCase().equals("text")) {
+					value = new String("image/jpeg");
+				}
+				if (value != null) values.put(f.getFieldName(), value);
+			}
+			listValues.add(values);
+		}
+
+		return listValues;
+	}
+
+	/**
+	 * Create a WHERE Clause to remove medias that in are mediaIds
+	 *
+	 * @param mediaIds, the list of the media ids.
+	 * @param tabFields The GeoPackage table fields to use for building the map.
+	 * @return A List Map
+	 * @throws IOException
+	 */
+	private String buildWhereClauseMediaIds(ArrayList<String> mediaIds, Collection<GpkgField> tabFields, long featureID) throws Exception {
+
+		String where = "";
+		String ids = "";
+		String fieldFeatureId = "";
+		String fieldPrimaryKey = "";
+		for (GpkgField f : tabFields) {
+			if (f.isPrimaryKey()) {
+				fieldPrimaryKey = f.getFieldName();
+			}else if ("integer".equalsIgnoreCase(f.getFieldType())) {
+				fieldFeatureId = f.getFieldName();
+			}
+		}
+		if(fieldPrimaryKey.isEmpty() || fieldFeatureId.isEmpty()) {
+			throw new Exception("Unknown media table.");
+		}
+
+		if(mediaIds!=null && !mediaIds.isEmpty()) {
+
+			Iterator<String> itIds = mediaIds.iterator();
+
+			while (itIds.hasNext()) {
+
+				String id = itIds.next();
+				if (id != null && !id.isEmpty())
+					ids += (ids.isEmpty() ? "" : ",") + id;
+			}
+		}
+
+		if(!ids.isEmpty()) where = fieldPrimaryKey + " NOT IN (" + ids + ") AND "+fieldFeatureId+"="+featureID;
+		else where = fieldFeatureId+"="+featureID;
+
+		return where;
+	}
+
+	/**
+	 * Create a WHERE Clause with the feature id
+	 *
+	 * @param tabFields The GeoPackage table fields to use for building the map.
+	 * @param featureID, the identified of the associated feature
+	 * @return A List Map
+	 * @throws IOException
+	 */
+	private String buildWhereClauseFeatureId(Collection<GpkgField> tabFields, long featureID) throws Exception {
+
+		String where = "";
+		String fieldFeatureId = "";
+		for (GpkgField f : tabFields) {
+			if (f.getFieldType().toLowerCase().equals("integer")) {
+				fieldFeatureId = f.getFieldName();
+				break;
+			}
+		}
+		if(fieldFeatureId.isEmpty()) {
+			throw new Exception("The Field Feature Id, not found on media table.");
+		}
+
+		where = fieldFeatureId + "=" + featureID;
+
+		return where;
+	}
+
 	/** Set a limit on the number of vertices permissible on a single geometry
 	 * when trying to insert new features. If the limit is exceeded then the 
 	 * geometries are simplified using the supplied tolerance.
@@ -1662,6 +1959,8 @@ public class GeoPackage {
 			return Float.class;
 		case DOUBLE:
 			return Double.class;
+		case DATE:
+			return Date.class;
 		case BYTE_ARR:
 			return Byte[].class;
 		}

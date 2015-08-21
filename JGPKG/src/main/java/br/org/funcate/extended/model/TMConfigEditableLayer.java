@@ -9,21 +9,53 @@ import java.util.ArrayList;
  */
 public class TMConfigEditableLayer {
 
-    private ArrayMap<String,String> config;
+    private ArrayMap<String,ConfigEditableLayer> config;
 
     public TMConfigEditableLayer() {
-        this.config =new ArrayMap<String,String>();
+        this.config =new ArrayMap<String, ConfigEditableLayer>();
     }
 
     public void addConfig(String identify, String JSON) {
-        this.config.put(identify, JSON);
+        ConfigEditableLayer configEditableLayer=new ConfigEditableLayer(JSON);
+        this.config.put(identify, configEditableLayer);
     }
 
-    public String getConfig(String identify) {
-        return this.config.get(identify);
+    public void addConfig(String identify, String JSON, String mediaTable) {
+        ConfigEditableLayer configEditableLayer=new ConfigEditableLayer(JSON, mediaTable);
+        this.config.put(identify, configEditableLayer);
+    }
+
+    public String getJSONConfig(String identify) {
+        return this.config.get(identify).getJSON();
+    }
+    public String getMediaTableConfig(String identify) {
+        return this.config.get(identify).getMediaTable();
     }
 
     public boolean isEditable(String identify) {
         return this.config.containsKey(identify);
+    }
+
+    private class ConfigEditableLayer {
+        private String JSON;
+        private String mediaTable;
+
+        public ConfigEditableLayer(String json) {
+            this.JSON=json;
+            this.mediaTable=null;
+        }
+
+        public ConfigEditableLayer(String json, String mediaTable) {
+            this.JSON=json;
+            this.mediaTable=mediaTable;
+        }
+
+        public String getJSON() {
+            return JSON;
+        }
+
+        public String getMediaTable() {
+            return mediaTable;
+        }
     }
 }

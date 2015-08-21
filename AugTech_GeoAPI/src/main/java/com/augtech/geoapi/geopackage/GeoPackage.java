@@ -194,7 +194,6 @@ public class GeoPackage {
 		sqlTypeMap.put("real", JavaType.DOUBLE);
 		sqlTypeMap.put("long", JavaType.DOUBLE);
 		sqlTypeMap.put("geometry", JavaType.BYTE_ARR);
-        sqlTypeMap.put("multipolygon", JavaType.BYTE_ARR);
 		sqlTypeMap.put("blob", JavaType.BYTE_ARR);
 		sqlTypeMap.put("none", JavaType.BYTE_ARR);
 		/* insert new types of the geometry columns */
@@ -658,7 +657,7 @@ public class GeoPackage {
 		 * for matching/ intersecting bounds. If the envelope is null, then the full
 		 * geometry is read and checked */
 		
-		sqlStmt.append("SELECT * FROM [").append(tableName).append("] WHERE id IN(");
+		sqlStmt.append("SELECT * FROM [").append(tableName).append("] WHERE "+pk+" IN(");
 		
 		// Query only for feature geometry and test that before getting all attributes
 		long startTime = System.currentTimeMillis();

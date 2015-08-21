@@ -14,6 +14,8 @@ import com.augtech.geoapi.geopackage.GpkgField;
 import com.augtech.geoapi.geopackage.GpkgTable;
 import com.augtech.geoapi.geopackage.ICursor;
 import com.augtech.geoapi.geopackage.ISQLDatabase;
+import com.augtech.geoapi.geopackage.geometry.GeometryDecoder;
+import com.augtech.geoapi.geopackage.geometry.StandardGeometryDecoder;
 import com.augtech.geoapi.geopackage.table.FeaturesTable;
 import com.augtech.geoapi.geopackage.table.GpkgContents;
 
@@ -79,6 +81,33 @@ public class GeoPackageService {
             features = gpkg.getFeatures(tableName, boundingBox);
 
         return features;
+    }
+
+    public static SimpleFeature getFeatureByID(GeoPackage gpkg, String tableName, long featureID) throws Exception
+    {
+        if(!gpkg.isGPKGValid(false))
+        {
+            throw new Exception("Invalid GeoPackage file.");
+        }
+        GpkgTable layerTable = gpkg.getUserTable(tableName, GpkgTable.TABLE_TYPE_FEATURES);
+        String whereClause = layerTable.getPrimaryKey(gpkg) + "=" + featureID;
+
+        List<SimpleFeature> features;
+        features = gpkg.getFeatures(tableName, whereClause, new StandardGeometryDecoder());
+
+        SimpleFeature feature = null;
+        if(!features.isEmpty()) feature = features.get(0);
+
+        return feature;
+    }
+
+    public static boolean deleteFeature(GeoPackage gpkg, String tableName, long featureID) throws Exception
+    {
+        if(!gpkg.isGPKGValid(false))
+        {
+            throw new Exception("Invalid GeoPackage file.");
+        }
+        return gpkg.deleteFeature(tableName, featureID);
     }
 
     public static List<SimpleFeature> getTiles(GeoPackage gpkg, String tableName) throws Exception
@@ -150,10 +179,7 @@ public class GeoPackageService {
     }
 
     private static GpkgTable getGpkgTable(GeoPackage gpkg, String gpkgTableName) {
-
-        GpkgTable systemTable = gpkg.getSystemTable(gpkgTableName);
-
-        return systemTable;
+        return gpkg.getSystemTable(gpkgTableName);
     }
 
     private static GpkgContents getGpkgContents(GeoPackage gpkg) {
@@ -172,9 +198,10 @@ public class GeoPackageService {
     public static TMConfigEditableLayer getTMConfigEditableLayer(GeoPackage gpkg) throws QueryException {
 
         String tableName = "tm_layer_form";
-        String[] columns = new String[2];
+        String[] columns = new String[3];
         columns[0] = "gpkg_layer_identify";
         columns[1] = "tm_form";
+        columns[2] = "tm_media_table";
 
         TMConfigEditableLayer tmConfigEditableLayer=new TMConfigEditableLayer();
         try {
@@ -182,7 +209,8 @@ public class GeoPackageService {
             while (c.moveToNext()) {
                 String id = c.getString(0);
                 String json = c.getString(1);
-                tmConfigEditableLayer.addConfig(id, json);
+                String mediaTable = c.getString(2);
+                tmConfigEditableLayer.addConfig(id, json, mediaTable);
             }
         }catch (Exception e) {
             throw new QueryException(e.getMessage());
@@ -221,12 +249,64 @@ public class GeoPackageService {
         return featureType;
     }
 
-    public static void writeLayerFeature(GeoPackage gpkg, SimpleFeature feature) throws QueryException {
+    /**
+     * Write a Feature and your related medias on database.
+     * @param gpkg, The Database representing the GeoPackage.
+     * @param mediaTable, The name of the media table.
+     * @param feature, The SimpleFeature instance.
+     * @param databaseImages, The media's list to be kept on database. If no medias to keep, use null.
+     * @param insertImages, The media's list to be inserted. If no medias to insert, use null.
+     * @throws QueryException
+     */
+    public static void writeLayerFeature(GeoPackage gpkg, String mediaTable, SimpleFeature feature, ArrayList<String> databaseImages, ArrayList<Object> insertImages) throws QueryException {
+
         try {
-            gpkg.insertFeature(feature);
+            long insertedRows=0;
+            int removedRows = 0;
+            if(feature.getID()!=null) {
+
+                String strFeatureID = feature.getID().replaceAll(feature.getFeatureType().getTypeName(),"");
+                long featureID = new Long(strFeatureID).longValue();
+
+                if(gpkg.updateFeature(feature)) {
+
+                    if (mediaTable != null && !mediaTable.isEmpty()) {
+                        removedRows = gpkg.removeMedias(mediaTable, databaseImages, featureID);
+                        // TODO: write the number of removed medias on log
+
+                        if (!insertImages.isEmpty()) {
+                            insertedRows = gpkg.insertMedias(mediaTable, featureID, insertImages);
+                            // TODO: write the number of inserted medias on log
+                        }
+                    }
+                }
+            }else {
+                long featureID = gpkg.insertFeature(feature);
+                // if featureID == -1 then there is insertion process failure.
+                if(featureID >=0) {
+                    if(mediaTable!=null && !mediaTable.isEmpty() && !insertImages.isEmpty())
+                        insertedRows = gpkg.insertMedias(mediaTable, featureID, insertImages);
+                }
+            }
         }catch (Exception e){
             throw new QueryException(e.getMessage());
         }
+    }
+
+    public static Map<String, Object> getMedias(GeoPackage gpkg, String mediaTable, long featureID) throws QueryException {
+        Map<String, Object> medias = null;
+        try {
+            if(featureID>=0) {
+
+                if(mediaTable!=null && !mediaTable.isEmpty()) {
+                    medias = gpkg.getMedias(mediaTable, featureID);
+                }
+            }
+
+        }catch (Exception e){
+            throw new QueryException(e.getMessage());
+        }
+        return medias;
     }
 
     public static ArrayList<ArrayList<GpkgField>> getGpkgFieldsContents(GeoPackage gpkg, String[] columns, String whereClause) throws QueryException {

@@ -1609,7 +1609,7 @@ public class GeoPackage {
 		String where = "";
 		String fieldFeatureId = "";
 		for (GpkgField f : tabFields) {
-			if (f.getFieldType().toLowerCase().equals("integer")) {
+			if (!f.isPrimaryKey() && f.getFieldType().toLowerCase().equals("integer")) {
 				fieldFeatureId = f.getFieldName();
 				break;
 			}

@@ -274,7 +274,7 @@ public class GeoPackageService {
                         removedRows = gpkg.removeMedias(mediaTable, databaseImages, featureID);
                         // TODO: write the number of removed medias on log
 
-                        if (!insertImages.isEmpty()) {
+                        if (insertImages!=null && !insertImages.isEmpty()) {
                             insertedRows = gpkg.insertMedias(mediaTable, featureID, insertImages);
                             // TODO: write the number of inserted medias on log
                         }

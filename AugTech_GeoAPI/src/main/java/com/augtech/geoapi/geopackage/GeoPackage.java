@@ -1376,13 +1376,13 @@ public class GeoPackage {
 
 		GpkgField PK_UID = new GpkgField("PK_UID", "integer");
 		PK_UID.primaryKey = true;
-		GpkgField field_work_id = new GpkgField("field_work_id", "integer");
+		GpkgField feature_id = new GpkgField("feature_id", "integer");
 		GpkgField picture = new GpkgField("picture", "blob");
 		GpkgField picture_mime_type = new GpkgField("picture_mime_type", "text");
 
 		Collection<GpkgField> tabFields = new HashSet<GpkgField>(4);
 		tabFields.add(PK_UID);
-		tabFields.add(field_work_id);
+		tabFields.add(feature_id);
 		tabFields.add(picture);
 		tabFields.add(picture_mime_type);
 

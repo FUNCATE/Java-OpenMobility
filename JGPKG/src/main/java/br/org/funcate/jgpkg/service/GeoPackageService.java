@@ -380,4 +380,12 @@ public class GeoPackageService {
 
 
     }
+
+    public static boolean updateFeature(GeoPackage gpkg, SimpleFeature feature) throws Exception {
+        boolean exec=false;
+        if(feature.getID()!=null) {
+            exec = gpkg.updateFeature(feature);
+        }
+        return exec;
+    }
 }

@@ -1430,13 +1430,19 @@ public class GeoPackage {
 		ICursor c = this.getDatabase().doQuery(mediaTable, new String[]{primaryKey,fieldNameBLOB}, where);
 		Map<String,Object> media = new HashMap<String, Object>();
 
-		if(c.moveToFirst()) {
-			do {
-				int index = c.getColumnIndex(primaryKey);
-				String key = String.valueOf(c.getInt(index));
-				index = c.getColumnIndex(fieldNameBLOB);
-				media.put(key, c.getBlob(index));
-			} while (c.moveToNext());
+		try {
+			if (c.moveToFirst()) {
+				do {
+					int index = c.getColumnIndex(primaryKey);
+					String key = String.valueOf(c.getInt(index));
+					index = c.getColumnIndex(fieldNameBLOB);
+					media.put(key, c.getBlob(index));
+				} while (c.moveToNext());
+			}
+		}catch (Exception e) {
+			e.printStackTrace();
+			c.close();
+			throw new Exception(e.getMessage());
 		}
 		c.close();
 		return media;

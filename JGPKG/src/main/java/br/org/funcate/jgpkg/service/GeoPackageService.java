@@ -284,7 +284,7 @@ public class GeoPackageService {
                 long featureID = gpkg.insertFeature(feature);
                 // if featureID == -1 then there is insertion process failure.
                 if(featureID >=0) {
-                    if(mediaTable!=null && !mediaTable.isEmpty() && !insertImages.isEmpty())
+                    if(mediaTable!=null && !mediaTable.isEmpty() && insertImages!=null && !insertImages.isEmpty())
                         insertedRows = gpkg.insertMedias(mediaTable, featureID, insertImages);
                 }
             }

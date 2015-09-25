@@ -666,6 +666,29 @@ public class GeoPackage {
 			
 		}
 
+        /* Check if there is a bbox column to query. If exists use it to filter
+        * geom spatially*/
+
+       GpkgField llx = featTable.getField("llx");
+       GpkgField lly = featTable.getField("lly");
+       GpkgField urx = featTable.getField("urx");
+       GpkgField ury = featTable.getField("ury");
+
+        if((llx!=null)
+                &&(lly!=null)
+                &&(urx!=null)
+                &&(ury!=null))
+        {
+            sqlStmt.append("SELECT [").append(tableName).append("].* FROM ["+tableName+"] ");
+            sqlStmt.append(" WHERE ");
+            sqlStmt.append(" llx>=").append( bbox.getMinX() );
+            sqlStmt.append(" AND lly>=").append( bbox.getMinY() );
+            sqlStmt.append(" AND urx<=").append( bbox.getMaxX() );
+            sqlStmt.append(" AND ury<=").append( bbox.getMaxY() );
+
+            return getFeatures(sqlStmt.toString(), featTable, geomDecoder);
+        }
+
 		/* Query all records in the feature table and check the header envelope
 		 * for matching/ intersecting bounds. If the envelope is null, then the full
 		 * geometry is read and checked */
@@ -695,7 +718,7 @@ public class GeoPackage {
 			// Go through these x number of records
 			boolean hasRecords = false;
 			while (cPage.moveToNext()) {
-				
+
 				hasRecords = true;
 				// Decode the geometry and test
 				headerEnv = geomDecoder.setGeometryData( cPage.getBlob(1) ).getEnvelope();

@@ -178,11 +178,11 @@ public abstract class GpkgTable {
 				 * FeatureTable we create a FeatureField here instead. */
 				GpkgField gf = null;
 
-                String dbType = columnCursor.getString(columnCursor.getColumnIndex("type"));
-                if(dbType.contains("("))
-                {
-                    dbType=dbType.replaceAll("([0-9])","").replace("()","");
-                }
+				String dbType = columnCursor.getString(columnCursor.getColumnIndex("type"));
+				if(dbType.contains("("))
+				{
+					dbType=dbType.replaceAll("([0-9])","").replace("()","");
+				}
 
 				if (this instanceof FeaturesTable) {
 					gf = new FeatureField(fieldName, dbType );

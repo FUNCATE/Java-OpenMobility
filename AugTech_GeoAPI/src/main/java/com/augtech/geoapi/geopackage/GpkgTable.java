@@ -177,10 +177,17 @@ public abstract class GpkgTable {
 				 * GpkgDataColumns, therefore to save extensive casting/ testing when processing a 
 				 * FeatureTable we create a FeatureField here instead. */
 				GpkgField gf = null;
+
+                String dbType = columnCursor.getString(columnCursor.getColumnIndex("type"));
+                if(dbType.contains("("))
+                {
+                    dbType=dbType.replaceAll("([0-9])","").replace("()","");
+                }
+
 				if (this instanceof FeaturesTable) {
-					gf = new FeatureField(fieldName, columnCursor.getString(columnCursor.getColumnIndex("type")) );
+					gf = new FeatureField(fieldName, dbType );
 				} else {
-					gf = new GpkgField(fieldName, columnCursor.getString(columnCursor.getColumnIndex("type")) );
+					gf = new GpkgField(fieldName, dbType );
 				}
 				
 				gf.primaryKey =  columnCursor.getInt(columnCursor.getColumnIndex("pk"))==1;
@@ -395,11 +402,6 @@ public abstract class GpkgTable {
 			fieldIdx.put(col, colIdx);
 			GpkgField gf = fields.get(col).clone();
             String typeStr=gf.getFieldType().toLowerCase();
-            if(typeStr.contains("("))
-            {
-                typeStr=typeStr.replaceAll("([0-9])","").replace("()","");
-            }
-
 			fieldList.add( gf );
 			
 			// A simple list of the mapped Java type

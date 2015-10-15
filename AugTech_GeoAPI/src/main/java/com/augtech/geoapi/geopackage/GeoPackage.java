@@ -181,7 +181,7 @@ public class GeoPackage {
 		sysTables.put(GpkgMetaDataReference.TABLE_NAME, new GpkgMetaDataReference());
 		sysTables.put(GpkgTileMatrix.TABLE_NAME, new GpkgTileMatrix());
 		sysTables.put(GpkgTileMatrixSet.TABLE_NAME, new GpkgTileMatrixSet());
-		
+
 		sysViews.put(SpatialRefSys.VIEW_NAME, new SpatialRefSys());
 		sysViews.put(STGeometryColumns.VIEW_NAME, new STGeometryColumns());
 		sysViews.put(STSpatialRefSys.VIEW_NAME, new STSpatialRefSys());
@@ -191,6 +191,7 @@ public class GeoPackage {
 		sqlTypeMap.put("int", JavaType.INTEGER);
 		sqlTypeMap.put("integer", JavaType.INTEGER);
 		sqlTypeMap.put("tinyint", JavaType.INTEGER);
+        sqlTypeMap.put("mediumint", JavaType.INTEGER);
 		sqlTypeMap.put("text", JavaType.STRING);
 		sqlTypeMap.put("date", JavaType.DATE);
 		sqlTypeMap.put("datetime", JavaType.DATE);

@@ -394,10 +394,16 @@ public abstract class GpkgTable {
 			// Add field to record-set index
 			fieldIdx.put(col, colIdx);
 			GpkgField gf = fields.get(col).clone();
+            String typeStr=gf.getFieldType().toLowerCase();
+            if(typeStr.contains("("))
+            {
+                typeStr=typeStr.replaceAll("([0-9])","").replace("()","");
+            }
+
 			fieldList.add( gf );
 			
 			// A simple list of the mapped Java type
-			jTypeList.add( geoPackage.sqlTypeMap.get( gf.getFieldType().toLowerCase() ) );
+			jTypeList.add( geoPackage.sqlTypeMap.get( typeStr ) );
 			colIdx++;
 		}
 		

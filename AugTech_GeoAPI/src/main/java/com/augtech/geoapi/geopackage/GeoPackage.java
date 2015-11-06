@@ -18,34 +18,6 @@
 
 package com.augtech.geoapi.geopackage;
 
-import java.io.ByteArrayOutputStream;
-import java.io.File;
-import java.io.FileNotFoundException;
-import java.io.IOException;
-import java.io.RandomAccessFile;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Date;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.logging.Level;
-import java.util.logging.Logger;
-
-import org.opengis.feature.simple.SimpleFeature;
-import org.opengis.feature.simple.SimpleFeatureType;
-import org.opengis.feature.type.AttributeType;
-import org.opengis.feature.type.FeatureType;
-import org.opengis.feature.type.GeometryDescriptor;
-import org.opengis.feature.type.Name;
-import org.opengis.geometry.BoundingBox;
-import org.opengis.referencing.crs.CoordinateReferenceSystem;
-
-import com.augtech.geoapi.R;
-import com.augtech.geoapi.context.Utils;
 import com.augtech.geoapi.feature.SimpleFeatureImpl;
 import com.augtech.geoapi.geometry.BoundingBoxImpl;
 import com.augtech.geoapi.geopackage.geometry.GeometryDecoder;
@@ -78,6 +50,31 @@ import com.vividsolutions.jts.geom.Envelope;
 import com.vividsolutions.jts.geom.Geometry;
 import com.vividsolutions.jts.io.ByteOrderValues;
 import com.vividsolutions.jts.simplify.DouglasPeuckerSimplifier;
+
+import org.opengis.feature.simple.SimpleFeature;
+import org.opengis.feature.simple.SimpleFeatureType;
+import org.opengis.feature.type.AttributeType;
+import org.opengis.feature.type.FeatureType;
+import org.opengis.feature.type.GeometryDescriptor;
+import org.opengis.feature.type.Name;
+import org.opengis.geometry.BoundingBox;
+import org.opengis.referencing.crs.CoordinateReferenceSystem;
+
+import java.io.ByteArrayOutputStream;
+import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.IOException;
+import java.io.RandomAccessFile;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Date;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 public class GeoPackage {
 	protected ISQLDatabase sqlDB = null;
@@ -1464,6 +1461,12 @@ public class GeoPackage {
 				} while (c.moveToNext());
 			}
 		}catch (Exception e) {
+			/**
+			 * It is know that one error occur when one image's size is larger than 2MB.
+			 * ... "only support a string or BLOB length up to 2147483647" ...
+			 * See this page about "Limits In SQLite": https://www.sqlite.org/limits.html
+			 * To more info about this, read the benchmark this page: http://www.sqlite.org/intern-v-extern-blob.html
+			 */
 			e.printStackTrace();
 			c.close();
 			throw new Exception(e.getMessage());

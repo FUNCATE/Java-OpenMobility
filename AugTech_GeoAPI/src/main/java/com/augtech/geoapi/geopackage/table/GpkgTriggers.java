@@ -178,4 +178,14 @@ public class GpkgTriggers {
 		CREATE_TRIGGER_SPATIAL_DELETE
 	};
 
+	/**
+	 * Formatted String to select all Spatial trigger from one table. {0}=Table Name
+	 */
+	public static final String SELECT_ALL_SPATIAL_TRIGGERS_TO_ONE_TABLE = "SELECT name FROM sqlite_master"+
+			" WHERE type = ''trigger'' AND tbl_name = ''{0}'';";
+
+	/**
+	 * Formatted String to remove one Spatial trigger. {0}=Trigger Name
+	 */
+	public static final String DROP_SPATIAL_TRIGGERS = "DROP TRIGGER ''{0}'';";
 }

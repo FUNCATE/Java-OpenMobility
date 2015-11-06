@@ -145,7 +145,7 @@ public class GeoPackage {
 	 * Increasing this number <i>may</i> result in slightly faster queries on large recordsets,
 	 * but <i>could</i> also result in memory exceptions or missing records (especially on mobile
 	 * devices with limited memory. (Tested on Android at 1000) */
-	public static int MAX_RECORDS_PER_CURSOR = 1000;
+	public static int MAX_RECORDS_PER_CURSOR = 150;
 	
 	/** Connect to, or create a new GeoPackage with the supplied name and version.<p>
 	 * If the supplied name already exists then the database is checked to see if it
@@ -246,7 +246,7 @@ public class GeoPackage {
 			// Try setting the application_id pragma through Sqlite implementation
 			if ( !setGpkgAppPragma() ) setGpkgAppHeader();
 			
-			if (!isGPKGValid(true)) {
+			if (!isGPKGValid(false)) {
 				try {
 					close();
 				} catch (Exception ig){}
@@ -682,10 +682,13 @@ public class GeoPackage {
         {
             sqlStmt.append("SELECT [").append(tableName).append("].* FROM ["+tableName+"] ");
             sqlStmt.append(" WHERE ");
-            sqlStmt.append(" llx>=").append( bbox.getMinX() );
-            sqlStmt.append(" AND lly>=").append( bbox.getMinY() );
-            sqlStmt.append(" AND urx<=").append( bbox.getMaxX() );
-            sqlStmt.append(" AND ury<=").append( bbox.getMaxY() );
+            sqlStmt.append(" NOT(llx>=").append( bbox.getMaxX() );
+            sqlStmt.append(" OR lly>=").append( bbox.getMaxY() );
+            sqlStmt.append(" OR urx<=").append( bbox.getMinX() );
+            sqlStmt.append(" OR ury<=").append( bbox.getMinY() ).append( ")" );
+
+
+            System.out.println(sqlStmt);
 
             return getFeatures(sqlStmt.toString(), featTable, geomDecoder);
         }

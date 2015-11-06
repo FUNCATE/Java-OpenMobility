@@ -1,12 +1,6 @@
 package br.org.funcate.jgpkg.service;
 
 
-import java.io.File;
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Map;
 import android.content.Context;
 
 import com.augtech.geoapi.geopackage.GeoPackage;
@@ -14,19 +8,27 @@ import com.augtech.geoapi.geopackage.GpkgField;
 import com.augtech.geoapi.geopackage.GpkgTable;
 import com.augtech.geoapi.geopackage.ICursor;
 import com.augtech.geoapi.geopackage.ISQLDatabase;
-import com.augtech.geoapi.geopackage.geometry.GeometryDecoder;
 import com.augtech.geoapi.geopackage.geometry.StandardGeometryDecoder;
 import com.augtech.geoapi.geopackage.table.FeaturesTable;
 import com.augtech.geoapi.geopackage.table.GpkgContents;
+import com.augtech.geoapi.geopackage.table.GpkgTriggers;
 
 import org.opengis.feature.simple.SimpleFeature;
 import org.opengis.feature.simple.SimpleFeatureType;
 import org.opengis.geometry.BoundingBox;
 
+import java.io.File;
+import java.text.MessageFormat;
 import java.util.ArrayList;
+import java.util.Collection;
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
+import br.org.funcate.dynamicforms.FormUtilities;
 import br.org.funcate.extended.model.TMConfigEditableLayer;
 import br.org.funcate.geopackage.AndroidSQLDatabase;
 import br.org.funcate.jgpkg.exception.QueryException;
@@ -204,15 +206,22 @@ public class GeoPackageService {
         columns[2] = "tm_media_table";
 
         TMConfigEditableLayer tmConfigEditableLayer=new TMConfigEditableLayer();
+        ICursor c=null;
         try {
-            ICursor c = gpkg.getDatabase().doQuery(tableName, columns, null);
+            c = gpkg.getDatabase().doQuery(tableName, columns, null);
             while (c.moveToNext()) {
                 String id = c.getString(0);
                 String json = c.getString(1);
                 String mediaTable = c.getString(2);
-                tmConfigEditableLayer.addConfig(id, json, mediaTable);
+                boolean isValid = GeoPackageService.validateEditableLayerConfiguration(gpkg, id, json, mediaTable);
+                if(isValid) {
+                    tmConfigEditableLayer.addConfig(id, json, mediaTable);
+                    GeoPackageService.removeTriggersOfTable(gpkg, id);
+                }
             }
+            c.close();
         }catch (Exception e) {
+            if(c!=null && c instanceof ICursor) c.close();
             throw new QueryException(e.getMessage());
         }
 
@@ -271,12 +280,10 @@ public class GeoPackageService {
                 if(gpkg.updateFeature(feature)) {
 
                     if (mediaTable != null && !mediaTable.isEmpty()) {
-                        removedRows = gpkg.removeMedias(mediaTable, databaseImages, featureID);
-                        // TODO: write the number of removed medias on log
+                        removedRows = gpkg.removeMedias(mediaTable, databaseImages, featureID);// TODO: write the number of removed medias on log
 
                         if (insertImages!=null && !insertImages.isEmpty()) {
-                            insertedRows = gpkg.insertMedias(mediaTable, featureID, insertImages);
-                            // TODO: write the number of inserted medias on log
+                            insertedRows = gpkg.insertMedias(mediaTable, featureID, insertImages);// TODO: write the number of inserted medias on log
                         }
                     }
                 }
@@ -285,7 +292,7 @@ public class GeoPackageService {
                 // if featureID == -1 then there is insertion process failure.
                 if(featureID >=0) {
                     if(mediaTable!=null && !mediaTable.isEmpty() && insertImages!=null && !insertImages.isEmpty())
-                        insertedRows = gpkg.insertMedias(mediaTable, featureID, insertImages);
+                        insertedRows = gpkg.insertMedias(mediaTable, featureID, insertImages);// TODO: write the number of inserted medias on log
                 }
             }
         }catch (Exception e){
@@ -387,5 +394,101 @@ public class GeoPackageService {
             exec = gpkg.updateFeature(feature);
         }
         return exec;
+    }
+
+    public static boolean removeTriggersOfTable(GeoPackage gpkg, String tableName) throws Exception {
+        boolean exec=false;
+        if(!gpkg.getDatabase().hasRTreeEnabled()) {
+
+            String stmt = MessageFormat.format(GpkgTriggers.SELECT_ALL_SPATIAL_TRIGGERS_TO_ONE_TABLE, tableName);
+
+            ICursor c = gpkg.getDatabase().doRawQuery(stmt);
+
+            while (c.moveToNext()) {
+                String triggerName = c.getString(0);
+                if(!triggerName.isEmpty()) {
+                    String dropTrigger = MessageFormat.format(GpkgTriggers.DROP_SPATIAL_TRIGGERS, triggerName);
+                    gpkg.getDatabase().execSQL(dropTrigger);
+                    exec=true;
+                }
+            }
+            c.close();
+        }
+
+        return exec;
+    }
+
+    private static boolean validateEditableLayerConfiguration(GeoPackage gpkg, String layerName, String jsonForm, String mediaTable) throws Exception {
+        boolean isValid=false;
+
+        if(layerName==null || layerName.isEmpty() || jsonForm==null || jsonForm.isEmpty()) return false;
+
+        String VERIFY_STATEMENT = "SELECT name FROM sqlite_master WHERE type = ''{0}'' AND tbl_name = ''{1}''";
+        String stmt = MessageFormat.format(VERIFY_STATEMENT, "table", layerName);
+
+        // validate if layer table exists on geopackage
+        ICursor c = gpkg.getDatabase().doRawQuery(stmt);
+        if (c.moveToFirst()) {
+            String tableName = c.getString(0);
+            c.close();
+            if(tableName==null || tableName.isEmpty()) {
+                return false;
+            }else if(tableName.equals(layerName)) {
+                isValid=true;
+            }
+        }else {
+            c.close();
+            return false;
+        }
+
+        // validate if picture field exists on json
+        CharSequence cs = FormUtilities.TYPE_PICTURES;
+        if(jsonForm.contains(cs)) {
+
+            // validate if registered name of the media table is valid
+            if (mediaTable == null || mediaTable.isEmpty()) {
+
+                mediaTable = layerName + "_picture_data";
+                GeoPackageService.createMediaTable(gpkg, layerName, mediaTable);
+                isValid = true;
+
+            } else {
+
+                stmt = MessageFormat.format(VERIFY_STATEMENT, "table", mediaTable);
+                // validate if media table exists on geopackage
+                c = gpkg.getDatabase().doRawQuery(stmt);
+                if (c.moveToFirst()) {
+                    String tableName = c.getString(0);
+                    c.close();
+                    if(tableName==null || tableName.isEmpty() || !tableName.equals(mediaTable)) {
+                        GeoPackageService.createMediaTable(gpkg, layerName, mediaTable);
+                        isValid = true;
+                    }
+                } else {
+                    c.close();
+                }
+            }
+        }
+
+        return isValid;
+    }
+
+    private static void createMediaTable(GeoPackage gpkg, String layerName, String mediaTable) throws Exception {
+
+        FeaturesTable userTable = (FeaturesTable) gpkg.getUserTable(layerName, GpkgTable.TABLE_TYPE_FEATURES);
+        String layerPK = userTable.getPrimaryKey(gpkg);
+
+        String mediaTableStmt = "CREATE TABLE IF NOT EXISTS '"+mediaTable+"' ("+
+                " PK_UID INTEGER PRIMARY KEY AUTOINCREMENT,"+
+                " feature_id INTEGER NOT NULL,"+
+                " picture BLOB,"+
+                " picture_mime_type TEXT,"+
+                " CONSTRAINT fk_feature_id FOREIGN KEY (feature_id) REFERENCES "+layerName+"("+layerPK+") ON DELETE CASCADE);";
+
+        gpkg.getDatabase().execSQL(mediaTableStmt);
+
+        String updateTmLayerFormConfigStmt = "UPDATE tm_layer_form SET tm_media_table='"+mediaTable+"' WHERE gpkg_layer_identify='"+layerName+"';";
+
+        gpkg.getDatabase().execSQL(updateTmLayerFormConfigStmt);
     }
 }

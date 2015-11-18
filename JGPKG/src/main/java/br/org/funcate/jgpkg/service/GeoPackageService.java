@@ -27,6 +27,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import br.org.funcate.dynamicforms.FormUtilities;
 import br.org.funcate.extended.model.TMConfigEditableLayer;
@@ -215,6 +217,7 @@ public class GeoPackageService {
                 String mediaTable = c.getString(2);
                 boolean isValid = GeoPackageService.validateEditableLayerConfiguration(gpkg, id, json, mediaTable);
                 if(isValid) {
+                    json = removeUnprintableCharacters(json);
                     tmConfigEditableLayer.addConfig(id, json, mediaTable);
                     GeoPackageService.removeTriggersOfTable(gpkg, id);
                 }
@@ -471,6 +474,40 @@ public class GeoPackageService {
         }
 
         return isValid;
+    }
+
+    private static String removeUnprintableCharacters(String str) {
+
+        StringBuffer buf = new StringBuffer();
+        Matcher m = Pattern.compile("\\\\u([0-9A-Fa-f]{4})").matcher(str);
+        while (m.find()) {
+            try {
+                int cp = Integer.parseInt(m.group(1), 16);
+                String rep = "";
+                // Replace invisible control characters and unused code points
+                switch (Character.getType(cp))
+                {
+                    case Character.CONTROL:     // \p{Cc}
+                    case Character.FORMAT:      // \p{Cf}
+                    case Character.PRIVATE_USE: // \p{Co}
+                    case Character.SURROGATE:   // \p{Cs}
+                    case Character.UNASSIGNED:  // \p{Cn}
+                        m.appendReplacement(buf, rep);
+                        break;
+                    default:
+                        char[] chars = Character.toChars(cp);
+                        rep = new String(chars);
+                        m.appendReplacement(buf, rep);
+                        break;
+                }
+
+            } catch (NumberFormatException e) {
+                System.err.println("Confused: " + e);
+            }
+        }
+        m.appendTail(buf);
+        str = buf.toString();
+        return str;
     }
 
     private static void createMediaTable(GeoPackage gpkg, String layerName, String mediaTable) throws Exception {

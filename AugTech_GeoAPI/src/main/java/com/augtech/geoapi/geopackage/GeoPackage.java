@@ -1431,7 +1431,7 @@ public class GeoPackage {
 	 * Get list of the medias and your respective binary data.
 	 * @param mediaTable, the name of the media table
 	 * @param featureID, id of the associated feature.
-	 * @return
+	 * @return A HashMap that contains the key and binary data to the pictures.
 	 * @throws Exception
 	 */
 	public Map<String,Object> getMedias (String mediaTable, long featureID) throws Exception {

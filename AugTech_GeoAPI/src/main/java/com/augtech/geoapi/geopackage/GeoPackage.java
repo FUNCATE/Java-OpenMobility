@@ -69,8 +69,6 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Date;
 import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.logging.Level;
@@ -1375,120 +1373,17 @@ public class GeoPackage {
 		return false;
 	}
 
-	/**
-	 * To Insert the media files on media table into a GeoPackage. Media table is not default on Geopackage.
-	 * @param mediaTable, the name of the media table
-	 * @param featureID, The identity of the Feature to associate media and Feature.
-	 * @param medias, the media's bytes into an Array of medias
-	 * @return, a long with number of the affected rows
-	 * @throws Exception
-	 */
-	public long insertMedias (String mediaTable, long featureID, ArrayList<Object> medias) throws Exception {
-		Collection<GpkgField> tabFields = getFieldsForMediaTable();
-
-		List<Map<String,Object>> allValues=buildInsertValues(medias, tabFields, featureID);
-
-		return this.getDatabase().doInsert(mediaTable, allValues);
-	}
-
-	/**
-	 * Method for get Fields of the Media Table
-	 * @return
-	 */
-	private Collection<GpkgField> getFieldsForMediaTable() {
-
-		GpkgField PK_UID = new GpkgField("PK_UID", "integer");
-		PK_UID.primaryKey = true;
-		GpkgField feature_id = new GpkgField("feature_id", "integer");
-		GpkgField picture = new GpkgField("picture", "blob");
-		GpkgField picture_mime_type = new GpkgField("picture_mime_type", "text");
-
-		Collection<GpkgField> tabFields = new HashSet<GpkgField>(4);
-		tabFields.add(PK_UID);
-		tabFields.add(feature_id);
-		tabFields.add(picture);
-		tabFields.add(picture_mime_type);
-
-		return tabFields;
-	}
-
-	/**
-	 *
-	 * @param mediaTable
-	 * @param databaseMedias, ids of the kept medias
-	 * @param featureID, id of the associated feature.
-	 * @return int, the number of the affected rows
-	 * @throws Exception
-	 */
-	public int removeMedias (String mediaTable, ArrayList<String> databaseMedias, long featureID) throws Exception {
-
-		Collection<GpkgField> tabFields = getFieldsForMediaTable();
-		String removeWhere = buildWhereClauseMediaIds(databaseMedias, tabFields, featureID);
-		return this.getDatabase().doDelete(mediaTable, removeWhere);
-	}
-
-	/**
-	 * Get list of the medias and your respective binary data.
-	 * @param mediaTable, the name of the media table
-	 * @param featureID, id of the associated feature.
-	 * @return A HashMap that contains the key and binary data to the pictures.
-	 * @throws Exception
-	 */
-	public Map<String,Object> getMedias (String mediaTable, long featureID) throws Exception {
-
-		Collection<GpkgField> tabFields = getFieldsForMediaTable();
-		String where = buildWhereClauseFeatureId(tabFields, featureID);
-
-		Iterator<GpkgField> itField = tabFields.iterator();
-		String fieldNameBLOB="";
-		String primaryKey="";
-		while (itField.hasNext()) {
-			GpkgField field = itField.next();
-			if(field.getFieldType().toLowerCase().equals("blob")) {
-				fieldNameBLOB = field.getFieldName();
-			}else if(field.isPrimaryKey()) {
-				primaryKey = field.getFieldName();
-			}
-		}
-
-		ICursor c = this.getDatabase().doQuery(mediaTable, new String[]{primaryKey,fieldNameBLOB}, where);
-		Map<String,Object> media = new HashMap<String, Object>();
-
-		try {
-			if (c.moveToFirst()) {
-				do {
-					int index = c.getColumnIndex(primaryKey);
-					String key = String.valueOf(c.getInt(index));
-					index = c.getColumnIndex(fieldNameBLOB);
-					media.put(key, c.getBlob(index));
-				} while (c.moveToNext());
-			}
-		}catch (Exception e) {
-			/**
-			 * It is know that one error occur when one image's size is larger than 2MB.
-			 * ... "only support a string or BLOB length up to 2147483647" ...
-			 * See this page about "Limits In SQLite": https://www.sqlite.org/limits.html
-			 * To more info about this, read the benchmark this page: http://www.sqlite.org/intern-v-extern-blob.html
-			 */
-			e.printStackTrace();
-			c.close();
-			throw new Exception(e.getMessage());
-		}
-		c.close();
-		return media;
-	}
-
 	/** Create a Map of field name to field value for inserting into a table.
-	 * 
+	 *
 	 * @param feature The {@link SimpleFeature}
 	 * @param tabFields The GeoPackage table fields to use for building the map.
-	 * @param geomDimension 2 or 3 for the Geomaetry ordinates/
-	 * @return A Map 
+	 * @param geomDimension 2 or 3 for the Geometry ordinates/
+	 * @return A Map
 	 * @throws IOException
 	 */
-	private Map<String, Object> buildInsertValues(SimpleFeature feature, 
-			Collection<GpkgField> tabFields, int geomDimension) throws IOException {
-		
+	private Map<String, Object> buildInsertValues(SimpleFeature feature,
+												  Collection<GpkgField> tabFields, int geomDimension) throws IOException {
+
 		// Construct values
 		SimpleFeatureType type = feature.getType();
 		Map<String, Object> values = new HashMap<String, Object>();
@@ -1496,14 +1391,14 @@ public class GeoPackage {
 		FeatureField field = null;
 		boolean passConstraint = true;
 		boolean hasGeom = false;
-		
+
 		// For each field defined in the table...
 		for (GpkgField f : tabFields) {
-			
+
 			if (f.isPrimaryKey()) continue; // We can't update the PK!
-		
+
 			field = (FeatureField)f;
-			
+
 			// If defined as feature id, use getID, else find the attribute
 			if ( field.isFeatureID() ) {
 				value = feature.getID();
@@ -1519,12 +1414,12 @@ public class GeoPackage {
 			}
 
 			passConstraint = true;
-			
+
 			// Check constraint if not a blob
 			if (field.getMimeType()==null && field.getConstraint()!=null) {
 				passConstraint = field.getConstraint().isValueValid( value );
 			}
-			
+
 			if(passConstraint) {
 				if (value instanceof Geometry) {
 					hasGeom = true;
@@ -1539,124 +1434,13 @@ public class GeoPackage {
 				log.log(Level.WARNING, "Field "+field.getFieldName()+" did not pass constraint check; Inserting Null");
 				values.put(field.getFieldName(), null);
 			}
-			
+
 		}
-		
-		if (!hasGeom) 
-			throw new IllegalArgumentException("Feature "+feature.getID()+" has no Geomtery defined");
-		
+
+		if (!hasGeom)
+			throw new IllegalArgumentException("Feature "+feature.getID()+" has no Geometry defined");
+
 		return values;
-	}
-
-	/**
-	 * Create a Map of field name to field value for inserting into a table.
-	 *
-	 * @param medias, the list of the medias in binary format.
-	 * @param tabFields The GeoPackage table fields to use for building the map.
-	 * @param featureID, the identified of the associated feature
-	 * @return A List Map
-	 * @throws IOException
-	 */
-	private List<Map<String, Object>> buildInsertValues(ArrayList<Object> medias, Collection<GpkgField> tabFields, long featureID) throws IOException {
-
-		// Construct values
-		int len = medias.size();
-		List<Map<String, Object>> listValues = new ArrayList<Map<String, Object>>(len);
-		Map<String, Object> values = null;
-		Object value = null;
-		Iterator<Object> itMedia = medias.iterator();
-
-		while (itMedia.hasNext()){
-			values = new HashMap<String, Object>();
-			// For each field defined in the table...
-			for (GpkgField f : tabFields) {
-
-				if (f.isPrimaryKey()) continue; // We can't insert or update the PK! shall be autoincrement
-
-				// if integer is feature_id column
-				if (f.getFieldType().toLowerCase().equals("integer")) {
-					value = featureID;
-				}else if (f.getFieldType().toLowerCase().equals("blob")) {
-					value = itMedia.next();
-				}else if (f.getFieldType().toLowerCase().equals("text")) {
-					value = new String("image/jpeg");
-				}
-				if (value != null) values.put(f.getFieldName(), value);
-			}
-			listValues.add(values);
-		}
-
-		return listValues;
-	}
-
-	/**
-	 * Create a WHERE Clause to remove medias that in are mediaIds
-	 *
-	 * @param mediaIds, the list of the media ids.
-	 * @param tabFields The GeoPackage table fields to use for building the map.
-	 * @return A List Map
-	 * @throws IOException
-	 */
-	private String buildWhereClauseMediaIds(ArrayList<String> mediaIds, Collection<GpkgField> tabFields, long featureID) throws Exception {
-
-		String where = "";
-		String ids = "";
-		String fieldFeatureId = "";
-		String fieldPrimaryKey = "";
-		for (GpkgField f : tabFields) {
-			if (f.isPrimaryKey()) {
-				fieldPrimaryKey = f.getFieldName();
-			}else if ("integer".equalsIgnoreCase(f.getFieldType())) {
-				fieldFeatureId = f.getFieldName();
-			}
-		}
-		if(fieldPrimaryKey.isEmpty() || fieldFeatureId.isEmpty()) {
-			throw new Exception("Unknown media table.");
-		}
-
-		if(mediaIds!=null && !mediaIds.isEmpty()) {
-
-			Iterator<String> itIds = mediaIds.iterator();
-
-			while (itIds.hasNext()) {
-
-				String id = itIds.next();
-				if (id != null && !id.isEmpty())
-					ids += (ids.isEmpty() ? "" : ",") + id;
-			}
-		}
-
-		if(!ids.isEmpty()) where = fieldPrimaryKey + " NOT IN (" + ids + ") AND "+fieldFeatureId+"="+featureID;
-		else where = fieldFeatureId+"="+featureID;
-
-		return where;
-	}
-
-	/**
-	 * Create a WHERE Clause with the feature id
-	 *
-	 * @param tabFields The GeoPackage table fields to use for building the map.
-	 * @param featureID, the identified of the associated feature
-	 * @return A List Map
-	 * @throws IOException
-	 */
-	private String buildWhereClauseFeatureId(Collection<GpkgField> tabFields, long featureID) throws Exception {
-
-		String where = "";
-		String fieldFeatureId = "";
-		for (GpkgField f : tabFields) {
-			if (!f.isPrimaryKey() && f.getFieldType().toLowerCase().equals("integer")) {
-				fieldFeatureId = f.getFieldName();
-				break;
-			}
-		}
-		if(fieldFeatureId.isEmpty()) {
-			throw new Exception("The Field Feature Id, not found on media table.");
-		}
-
-		where = fieldFeatureId + "=" + featureID;
-
-		return where;
 	}
 
 	/** Set a limit on the number of vertices permissible on a single geometry

@@ -262,45 +262,30 @@ public class GeoPackageService {
     }
 
     /**
-     * Write a Feature and your related medias on database.
+     * Write a Feature on database.
      * @param gpkg, The Database representing the GeoPackage.
-     * @param mediaTable, The name of the media table.
      * @param feature, The SimpleFeature instance.
-     * @param databaseImages, The media's list to be kept on database. If no medias to keep, use null.
-     * @param insertImages, The media's list to be inserted. If no medias to insert, use null.
      * @throws QueryException
      */
-    public static void writeLayerFeature(GeoPackage gpkg, String mediaTable, SimpleFeature feature, ArrayList<String> databaseImages, ArrayList<Object> insertImages) throws QueryException {
-
+    public static long writeLayerFeature(GeoPackage gpkg, SimpleFeature feature) throws QueryException {
+        long featureID;
         try {
-            long insertedRows=0;
-            int removedRows = 0;
             if(feature.getID()!=null) {
 
-                String strFeatureID = feature.getID().replaceAll(feature.getFeatureType().getTypeName(),"");
-                long featureID = new Long(strFeatureID).longValue();
+                String strFeatureID = feature.getID().replaceAll(feature.getFeatureType().getTypeName(), "");
+                featureID = new Long(strFeatureID).longValue();
 
-                if(gpkg.updateFeature(feature)) {
-
-                    if (mediaTable != null && !mediaTable.isEmpty()) {
-                        removedRows = gpkg.removeMedias(mediaTable, databaseImages, featureID);// TODO: write the number of removed medias on log
-
-                        if (insertImages!=null && !insertImages.isEmpty()) {
-                            insertedRows = gpkg.insertMedias(mediaTable, featureID, insertImages);// TODO: write the number of inserted medias on log
-                        }
-                    }
+                if(!gpkg.updateFeature(feature)) {
+                    throw new QueryException("Failure on update feature.");
                 }
             }else {
-                long featureID = gpkg.insertFeature(feature);
+                featureID = gpkg.insertFeature(feature);
                 // if featureID == -1 then there is insertion process failure.
-                if(featureID >=0) {
-                    if(mediaTable!=null && !mediaTable.isEmpty() && insertImages!=null && !insertImages.isEmpty())
-                        insertedRows = gpkg.insertMedias(mediaTable, featureID, insertImages);// TODO: write the number of inserted medias on log
-                }
             }
         }catch (Exception e){
             throw new QueryException(e.getMessage());
         }
+        return featureID;// insertion process failure.
     }
 
     public static ArrayList<ArrayList<GpkgField>> getGpkgFieldsContents(GeoPackage gpkg, String[] columns, String whereClause) throws QueryException {

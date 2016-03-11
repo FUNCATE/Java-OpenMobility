@@ -455,7 +455,7 @@ public class GpkgTEST {
 			for (GpkgTable gt : ts) {
 				table = gt.getTableName();
 				try {
-				feats = geoPackage.getFeatures(table);
+				feats = geoPackage.getFeatures(table, "");
 				setTestMsg(fb, feats.size()+" feature(s) read via bbox query from "+table);
 				} catch (Exception e) {
 					setTestMsg(fb, "Error: "+e.getLocalizedMessage()+" reading from "+table);

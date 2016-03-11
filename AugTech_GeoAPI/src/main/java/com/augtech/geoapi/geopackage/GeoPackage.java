@@ -569,8 +569,8 @@ public class GeoPackage {
 	 * @throws Exception If the SRS of the supplied {@link BoundingBox} does not match the SRS of
 	 * the table being queried.
 	 */
-	public List<SimpleFeature> getFeatures(final String tableName, final BoundingBox bbox) throws Exception {
-		return getFeatures(tableName, bbox, true, true, new StandardGeometryDecoder());
+	public List<SimpleFeature> getFeatures(final String tableName, String filter, final BoundingBox bbox) throws Exception {
+		return getFeatures(tableName, filter, bbox, true, true, new StandardGeometryDecoder());
 	}
 	/** Get all the features from the supplied table name.<p>
 	 * This method is not recommended if you don't know how many features are in a table, 
@@ -582,9 +582,9 @@ public class GeoPackage {
 	 * @return
 	 * @throws Exception
 	 */
-	public List<SimpleFeature> getFeatures(final String tableName) throws Exception {
+	public List<SimpleFeature> getFeatures(final String tableName, String filter) throws Exception {
 		FeaturesTable featTable = (FeaturesTable)getUserTable( tableName, GpkgTable.TABLE_TYPE_FEATURES );
-		return getFeatures("SELECT * FROM [" + tableName + "]", featTable, new StandardGeometryDecoder());
+		return getFeatures("SELECT * FROM [" + tableName + "]" + ( (filter==null || filter.isEmpty())?(""):(" WHERE " + filter) ), featTable, new StandardGeometryDecoder());
 	}
 	/** Get a list of {@link SimpleFeature} from the GeoPackage by specifying a where clause
 	 * (for example {@code featureId='pipe.1234'} or {@code id=1234} )
@@ -623,7 +623,7 @@ public class GeoPackage {
 	 * @throws Exception If the SRS of the supplied {@link BoundingBox} does not match the SRS of
 	 * the table being queried.
 	 */
-	public List<SimpleFeature> getFeatures(final String tableName, final BoundingBox bbox, boolean includeIntersect, 
+	public List<SimpleFeature> getFeatures(final String tableName, String filter, final BoundingBox bbox, boolean includeIntersect,
 			boolean testExtents, GeometryDecoder geomDecoder) throws Exception {
 		log.log(Level.INFO, "BBOX query for features in "+tableName);
 		
@@ -656,7 +656,9 @@ public class GeoPackage {
 			sqlStmt.append(" AND MinX>=").append( bbox.getMinX() );
 			sqlStmt.append(" AND MaxX<=").append( bbox.getMaxX() );
 			sqlStmt.append(" AND MinY>=").append( bbox.getMinY() );
-			sqlStmt.append(" AND MaxY<=").append( bbox.getMaxY() );
+			sqlStmt.append(" AND MaxY<=").append(bbox.getMaxY());
+			if(filter!=null && !filter.isEmpty())
+				sqlStmt.append(" AND " + filter);
 			
 			return getFeatures(sqlStmt.toString(), featTable, geomDecoder);
 			
@@ -681,7 +683,8 @@ public class GeoPackage {
             sqlStmt.append(" OR lly>=").append( bbox.getMaxY() );
             sqlStmt.append(" OR urx<=").append( bbox.getMinX() );
             sqlStmt.append(" OR ury<=").append( bbox.getMinY() ).append( ")" );
-
+			if(filter!=null && !filter.isEmpty())
+				sqlStmt.append(" AND " + filter);
 
             System.out.println(sqlStmt);
 
@@ -750,7 +753,9 @@ public class GeoPackage {
 		if (hitCount==0) return allFeats;
 		
 		sqlStmt.setLength(sqlStmt.length()-1);// How many id's can the DB handle??
-		sqlStmt.append(");");
+		sqlStmt.append(")");
+		if(filter!=null && !filter.isEmpty())
+			sqlStmt.append(" AND " + filter);
 
 		log.log(Level.INFO, "Found "+hitCount+" features in "+tableName+" - Building SimpleFeature(s)...");
 		return getFeatures(sqlStmt.toString(), featTable, geomDecoder );
@@ -796,6 +801,7 @@ public class GeoPackage {
 		sqlStatement = sqlStatement.endsWith(";") ? sqlStatement.substring(0, sqlStatement.length()-1) : sqlStatement;
 		int whereIdx = sqlStatement.toLowerCase().indexOf("where");
 		sqlStatement = whereIdx>0 ? sqlStatement+" AND " : sqlStatement+" WHERE ";
+
 		ArrayList<Object> attrValues = new ArrayList<Object>();
 		Object value = null;
 		String fid;

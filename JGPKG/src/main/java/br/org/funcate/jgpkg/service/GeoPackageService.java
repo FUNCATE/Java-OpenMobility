@@ -66,7 +66,7 @@ public class GeoPackageService {
     }
 
 
-    public static List<SimpleFeature> getGeometries(GeoPackage gpkg, String tableName, BoundingBox boundingBox) throws Exception
+    public static List<SimpleFeature> getGeometries(GeoPackage gpkg, String tableName, String whereClause, BoundingBox boundingBox) throws Exception
     {
 /*        if(!gpkg.isGPKGValid(false))
         {
@@ -74,9 +74,9 @@ public class GeoPackageService {
         }*/
         List<SimpleFeature> features;
         if(boundingBox==null || boundingBox.isEmpty())
-            features = gpkg.getFeatures(tableName);
+            features = gpkg.getFeatures(tableName, whereClause);
         else
-            features = gpkg.getFeatures(tableName, boundingBox);
+            features = gpkg.getFeatures(tableName, whereClause, boundingBox);
 
         return features;
     }

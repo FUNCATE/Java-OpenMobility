@@ -52,9 +52,6 @@ public class GeoPackageService {
     }
 
 
-
-
-
     public static GeoPackage readGPKG(Context context, String gpkgFilePath)
     {
         AndroidSQLDatabase gpkgDB = new AndroidSQLDatabase(context, new File(gpkgFilePath));
@@ -65,6 +62,16 @@ public class GeoPackageService {
 
     }
 
+    public static boolean dropGPKG(String gpkgFilePath)
+    {
+        File gpkgFile=new File(gpkgFilePath);
+
+        if(gpkgFile!=null && gpkgFile.exists() && gpkgFile.delete()) {
+            return true;
+        }else {
+            return false;
+        }
+    }
 
     public static List<SimpleFeature> getGeometries(GeoPackage gpkg, String tableName, String whereClause, BoundingBox boundingBox) throws Exception
     {
@@ -323,4 +330,22 @@ public class GeoPackageService {
         }
         return exec;
     }
+
+    /**
+     * Exec SQL query in database in transaction mode.
+     * @return true on success or false otherwise
+     */
+    public static boolean execStatements(GeoPackage gpkg, String[] statements) {
+
+        if (gpkg==null) {
+            throw new IllegalArgumentException("GeoPackage parameter is null!");
+        }
+        if (statements==null || statements.length==0) {
+            throw new IllegalArgumentException("Statements parameter is null!");
+        }
+
+        return gpkg.execSQLWithRollback(statements);
+    }
+
+
 }

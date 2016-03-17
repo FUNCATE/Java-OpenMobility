@@ -1210,6 +1210,29 @@ public class GeoPackage {
 		
 		return ft;
 	}
+
+	/**
+	 * Drop one table and delete all references from gpkg model.
+	 * @param tableName, the name of table.
+	 * @return true on success or false otherwise
+	 */
+	public boolean dropTable(String tableName) {
+
+		if(tableName.isEmpty()) return false;
+
+		String[] sql = new String[6];
+
+		sql[0] = "DELETE FROM gpkg_contents WHERE table_name = '"+tableName+"'";
+		sql[1] = "DELETE FROM gpkg_geometry_columns WHERE table_name= '"+tableName+"'";
+		sql[2] = "DELETE FROM gpkg_extensions WHERE table_name= '"+tableName+"'";
+		sql[3] = "DELETE FROM gpkg_tile_matrix  WHERE table_name= '"+tableName+"'";
+		sql[4] = "DELETE FROM gpkg_tile_matrix_set  WHERE table_name= '"+tableName+"'";
+		sql[5] = "DROP TABLE "+tableName;
+
+		return this.execSQLWithRollback(sql);
+	}
+
+
 	/** Add all {@link SimpleFeature}'s on the supplied collection into the GeoPackage as a batch.
 	 * If there are multiple feature types within the collection they are
 	 * automatically split to their corresponding tables.
@@ -1794,6 +1817,19 @@ public class GeoPackage {
 		return String.class;
 	}
 
+	/**
+	 * Execute a SQL script, list of statement, into a transaction.
+	 * @param statements, the list of statement.
+	 * @return true on success or false otherwise.
+	 */
+	public boolean execSQLWithRollback(String[] statements) {
 
+		try {
+			return this.getDatabase().execSQLWithRollback(statements);
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+		return false;
+	}
 
 }

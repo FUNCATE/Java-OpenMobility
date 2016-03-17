@@ -15,21 +15,6 @@
  */
 package com.augtech.geoapi.geopackage;
 
-import android.text.format.DateFormat;
-
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Calendar;
-import java.util.Collection;
-import java.util.Date;
-import java.util.GregorianCalendar;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.TimeZone;
-
-import org.opengis.geometry.BoundingBox;
-
 import com.augtech.geoapi.geometry.BoundingBoxImpl;
 import com.augtech.geoapi.geopackage.GeoPackage.JavaType;
 import com.augtech.geoapi.geopackage.table.FeatureField;
@@ -40,6 +25,16 @@ import com.augtech.geoapi.geopackage.table.GpkgExtensions;
 import com.augtech.geoapi.geopackage.table.GpkgExtensions.Extension;
 import com.augtech.geoapi.geopackage.table.TilesTable;
 import com.augtech.geoapi.referncing.CoordinateReferenceSystemImpl;
+
+import org.opengis.geometry.BoundingBox;
+
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.Date;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 /** An abstract class to create, query and update a table within the GeoPackage.
  * All system tables extend this class, as do Feature and Tile tables. Implementors
@@ -84,7 +79,7 @@ public abstract class GpkgTable {
 	 * update and delete operations
 	 * @param fields An array of fields that can be referenced. If <code>Null</code>
 	 * then the fields will not be available immediately. One of the query methods will populate
-	 * the field data. <code>Null</code> Is typically used when creating a {@linkplain FeatureTable} or 
+	 * the field data. <code>Null</code> Is typically used when creating a {@linkplain FeaturesTable} or
 	 * {@link TilesTable}.
 	 * @param tableConstraints Any constraints that apply to the passed fields. These are SQL constraints, 
 	 * <i>not</i> {@linkplain GpkgDataColumnConstraint}'s.
@@ -106,7 +101,7 @@ public abstract class GpkgTable {
 	 * 
 	 * @return True if created, False if it already exists or it is either
 	 * a FeaturesTable or TilesTable
-	 * @see {@linkplain FeatureTable#create(GeoPackage)}
+	 * @see {@linkplain FeaturesTable#create(GeoPackage)}
 	 */
 	protected boolean create(GeoPackage geoPackage) {
 
@@ -500,7 +495,7 @@ public abstract class GpkgTable {
 	 * 
 	 * @param geoPackage The GeoPackage to look in
 	 * @return True if the table is in SQLITE_MASTER
-	 * @see #isTableInGpkg(String, String)
+	 * @see #isTableInGpkg(GeoPackage)
 	 */
 	public boolean isTableInDB(GeoPackage geoPackage) {
 		// Does the table already exist?

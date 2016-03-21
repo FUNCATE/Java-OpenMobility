@@ -347,5 +347,12 @@ public class GeoPackageService {
         return gpkg.execSQLWithRollback(statements);
     }
 
+    public static void execVacuumn(GeoPackage gpkg) {
+        if (gpkg==null) {
+            throw new IllegalArgumentException("GeoPackage parameter is null!");
+        }
+        gpkg.execVacuumn();
+    }
+
 
 }

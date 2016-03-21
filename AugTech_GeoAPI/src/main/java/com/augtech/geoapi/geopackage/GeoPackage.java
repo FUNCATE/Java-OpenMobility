@@ -1832,4 +1832,8 @@ public class GeoPackage {
 		return false;
 	}
 
+	public void execVacuumn() {
+		this.getDatabase().execSQL("VACUUM");
+	}
+
 }

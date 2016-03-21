@@ -67,6 +67,10 @@ public class GeoPackageService {
         File gpkgFile=new File(gpkgFilePath);
 
         if(gpkgFile!=null && gpkgFile.exists() && gpkgFile.delete()) {
+            File gpkgJournalFile=new File(gpkgFilePath+"-journal");
+            if(gpkgJournalFile!=null && gpkgJournalFile.exists()) {
+                gpkgJournalFile.delete();
+            }
             return true;
         }else {
             return false;
@@ -347,11 +351,11 @@ public class GeoPackageService {
         return gpkg.execSQLWithRollback(statements);
     }
 
-    public static void execVacuumn(GeoPackage gpkg) {
+    public static void execVacuum(GeoPackage gpkg) {
         if (gpkg==null) {
             throw new IllegalArgumentException("GeoPackage parameter is null!");
         }
-        gpkg.execVacuumn();
+        gpkg.execVacuum();
     }
 
 

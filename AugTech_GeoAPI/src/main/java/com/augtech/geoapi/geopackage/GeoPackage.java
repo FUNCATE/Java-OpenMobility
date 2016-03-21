@@ -773,7 +773,7 @@ public class GeoPackage {
 	 */
 	protected List<SimpleFeature> getFeatures(String sqlStatement, FeaturesTable featTable, GeometryDecoder geomDecoder)
 			throws Exception {
-		
+
 		List<SimpleFeature> allFeats = new ArrayList<SimpleFeature>();
 
 		int totalRecs = featTable.getCount(this);
@@ -1832,7 +1832,7 @@ public class GeoPackage {
 		return false;
 	}
 
-	public void execVacuumn() {
+	public void execVacuum() {
 		this.getDatabase().execSQL("VACUUM");
 	}
 
